@@ -1,0 +1,240 @@
+
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8"/>
+        <title>Kepler.gl embedded map</title>
+
+        <!--Uber Font-->
+        <link rel="stylesheet" href="https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/uber-fonts/4.0.0/superfine.css">
+
+        <!--Kepler css-->
+        <link href="https://unpkg.com/kepler.gl@3.1.10/umd/keplergl.min.css" rel="stylesheet">
+
+        <!--MapBox css-->
+        <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v1.1.1/mapbox-gl.css" rel="stylesheet">
+        <link href="https://unpkg.com/maplibre-gl@^3/dist/maplibre-gl.css" rel="stylesheet">
+
+        <!-— facebook open graph tags -->
+        <meta property="og:url" content="http://kepler.gl/" />
+        <meta property="og:title" content="Large-scale WebGL-powered Geospatial Data Visualization Tool" />
+        <meta property="og:description" content="Kepler.gl is a powerful web-based geospatial data analysis tool. Built on a high performance rendering engine and designed for large-scale data sets." />
+        <meta property="og:site_name" content="kepler.gl" />
+        <meta property="og:image" content="https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/kepler.gl-meta-tag.png" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="800" />
+        <meta property="og:image:height" content="800" />
+
+        <!-— twitter card tags -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:site" content="@openjsf">
+        <meta name="twitter:creator" content="@openjsf">
+        <meta name="twitter:title" content="Large-scale WebGL-powered Geospatial Data Visualization Tool">
+        <meta name="twitter:description" content="Kepler.gl is a powerful web-based geospatial data analysis tool. Built on a high performance rendering engine and designed for large-scale data sets.">
+        <meta name="twitter:image" content="https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/kepler.gl-meta-tag.png" />
+
+        <!-- Load React/Redux -->
+        <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+        <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+        <script src="https://unpkg.com/redux@4.2.1/dist/redux.js" crossorigin></script>
+        <script src="https://unpkg.com/react-redux@8.1.2/dist/react-redux.min.js" crossorigin></script>
+        <script src="https://unpkg.com/styled-components@6.1.8/dist/styled-components.min.js" crossorigin></script>
+
+        <!-- Load Kepler.gl -->
+        <script src="https://unpkg.com/kepler.gl@3.1.10/umd/keplergl.min.js" crossorigin></script>
+
+        <style type="text/css">
+          body {margin: 0; padding: 0; overflow: hidden;}
+        </style>
+
+        <!--MapBox token-->
+        <script>
+          /**
+           * Provide your MapBox Token
+           **/
+          const MAPBOX_TOKEN = 'pk.eyJ1IjoibHNsYW5nbGV5IiwiYSI6ImNtbmo5MWw0ZDBuNXAycHB1a21xcTcwc2oifQ.RFqRT9pyOJYaBgYF2EvGOg';
+          const WARNING_MESSAGE = 'Please Provide a Mapbox Token in order to use Kepler.gl. Edit this file and fill out MAPBOX_TOKEN with your access key';
+        </script>
+
+        <!-- GA: Delete this as you wish, However to pat ourselves on the back, we only track anonymous pageview to understand how many people are using kepler.gl. -->
+        <script>
+          (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+          (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+          })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+          ga('create', 'UA-64694404-19', {
+            'storage': 'none',
+            'clientId': localStorage.getItem('ga:clientId')
+          });
+          ga(function(tracker) {
+              localStorage.setItem('ga:clientId', tracker.get('clientId'));
+          });
+          ga('set', 'checkProtocolTask', null); // Disable file protocol checking.
+          ga('set', 'checkStorageTask', null); // Disable cookie storage checking.
+          ga('set', 'historyImportTask', null); // Disable history checking (requires reading from cookies).
+          ga('set', 'page', 'keplergl-html');
+          ga('send', 'pageview');
+        </script>
+      </head>
+      <body>
+        <!-- We will put our React component inside this div. -->
+        <div id="app">
+          <!-- Kepler.gl map will be placed here-->
+        </div>
+
+        <!-- Load our React component. -->
+        <script>
+          /* Validate Mapbox Token */
+          if ((MAPBOX_TOKEN || '') === '' || MAPBOX_TOKEN === 'PROVIDE_MAPBOX_TOKEN') {
+            alert(WARNING_MESSAGE);
+          }
+
+          /** STORE **/
+          const reducers = (function createReducers(redux, keplerGl) {
+            return redux.combineReducers({
+              // mount keplerGl reducer
+              keplerGl: keplerGl.keplerGlReducer.initialState({
+                uiState: {
+                  readOnly: false,
+                  currentModal: null
+                }
+              })
+            });
+          }(Redux, KeplerGl));
+
+          const middleWares = (function createMiddlewares(keplerGl) {
+            return keplerGl.enhanceReduxMiddleware([
+              // Add other middlewares here
+            ]);
+          }(KeplerGl));
+
+          const enhancers = (function craeteEnhancers(redux, middles) {
+            return redux.applyMiddleware(...middles);
+          }(Redux, middleWares));
+
+          const store = (function createStore(redux, enhancers) {
+            const initialState = {};
+
+            return redux.createStore(
+              reducers,
+              initialState,
+              redux.compose(enhancers)
+            );
+          }(Redux, enhancers));
+          /** END STORE **/
+
+          /** COMPONENTS **/
+          var KeplerElement = (function makeKeplerElement(react, keplerGl, mapboxToken) {
+            var LogoSvg = function LogoSvg() {
+              return react.createElement(
+                "div",
+                { className: "logo-container", style: {position: 'fixed', zIndex: 10000, padding: '4px'} },
+                  react.createElement(
+                    "svg",
+                    {
+                      className: "kepler_gl__logo",
+                      width: "107px",
+                      height: "21px",
+                      viewBox: "0 0 124 24"
+                    },
+                    react.createElement(
+                      "g",
+                      { transform: "translate(13.500000, 13.500000) rotate(45.000000) translate(-13.500000, -13.500000) translate(4.000000, 4.000000)" },
+                      react.createElement("rect", { x: "0", y: "6", transform: "matrix(2.535181e-06 1 -1 2.535181e-06 18.1107 6.0369)", fill: "#535C6C", width: "12.1", height: "12.1" }),
+                      react.createElement("rect", { x: "6", y: "0", transform: "matrix(2.535182e-06 1 -1 2.535182e-06 18.1107 -6.0369)", fill:"#1FBAD6", width: "12.1", height: "12.1" })
+                    ),
+                    react.createElement(
+                      "g",
+                      {},
+                      react.createElement("path", { fill:"#1FBAD6", d: "M39,8.7h2.2l-2.8,4.2l2.9,5.1H39l-2.4-4.2h-1.3V18h-2V5l2-0.1v7.3h1.3L39,8.7z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M42.4,13.3c0-1.5,0.4-2.7,1.1-3.5s1.8-1.2,3.1-1.2c1.3,0,2.2,0.4,2.8,1.1c0.6,0.7,0.9,1.8,0.9,3.3 c0,0.4,0,0.8,0,1.1h-5.8c0,1.6,0.8,2.4,2.4,2.4c1,0,2-0.2,2.9-0.6l0.2,1.7c-0.4,0.2-0.9,0.4-1.4,0.5s-1.1,0.2-1.7,0.2 c-1.5,0-2.6-0.4-3.3-1.2C42.8,16.1,42.4,14.9,42.4,13.3z M46.6,10.1c-0.7,0-1.2,0.2-1.5,0.5c-0.4,0.4-0.6,0.9-0.6,1.7h4 c0-0.8-0.2-1.4-0.5-1.7S47.2,10.1,46.6,10.1z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M57.1,18.2c-1,0-1.8-0.3-2.3-0.9l0,0l0,1.3v2.5h-2V8.7h1.5l0.3,0.9h0c0.3-0.3,0.7-0.6,1.2-0.7 c0.4-0.2,0.9-0.3,1.4-0.3c1.2,0,2.1,0.4,2.7,1.1c0.6,0.7,0.9,2,0.9,3.7c0,1.6-0.3,2.8-1,3.7C59.2,17.8,58.3,18.2,57.1,18.2z M56.7,10.3c-0.4,0-0.8,0.1-1.1,0.2c-0.3,0.2-0.6,0.4-0.8,0.7v4.3c0.2,0.3,0.4,0.5,0.7,0.7c0.3,0.2,0.7,0.3,1.1,0.3 c0.7,0,1.2-0.2,1.6-0.7c0.4-0.5,0.5-1.3,0.5-2.5c0-0.8-0.1-1.4-0.2-1.8s-0.4-0.7-0.7-0.9C57.6,10.4,57.2,10.3,56.7,10.3z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M63.2,16V5l2-0.1v10.8c0,0.3,0.1,0.5,0.2,0.6c0.1,0.1,0.3,0.2,0.6,0.2c0.3,0,0.6,0,0.9-0.1V18 c-0.4,0.1-1,0.2-1.6,0.2c-0.8,0-1.3-0.2-1.7-0.5S63.2,16.8,63.2,16z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M68.2,13.3c0-1.5,0.4-2.7,1.1-3.5c0.7-0.8,1.8-1.2,3.1-1.2c1.3,0,2.2,0.4,2.8,1.1c0.6,0.7,0.9,1.8,0.9,3.3 c0,0.4,0,0.8,0,1.1h-5.8c0,1.6,0.8,2.4,2.4,2.4c1,0,2-0.2,2.9-0.6l0.2,1.7c-0.4,0.2-0.9,0.4-1.4,0.5s-1.1,0.2-1.7,0.2 c-1.5,0-2.6-0.4-3.3-1.2C68.6,16.1,68.2,14.9,68.2,13.3z M72.4,10.1c-0.7,0-1.2,0.2-1.5,0.5c-0.4,0.4-0.6,0.9-0.6,1.7h4 c0-0.8-0.2-1.4-0.5-1.7S73,10.1,72.4,10.1z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M80.2,8.7l0.1,1.7h0c0.3-0.6,0.7-1.1,1.1-1.4c0.4-0.3,1-0.5,1.6-0.5c0.4,0,0.7,0,1,0.1l-0.1,2 c-0.3-0.1-0.7-0.2-1-0.2c-0.7,0-1.3,0.3-1.7,0.8c-0.4,0.5-0.7,1.2-0.7,2.1V18h-2V8.7H80.2z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M83.8,17c0-0.8,0.4-1.2,1.2-1.2c0.8,0,1.2,0.4,1.2,1.2c0,0.8-0.4,1.1-1.2,1.1C84.2,18.2,83.8,17.8,83.8,17z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M88.5,18.7c0-0.8,0.4-1.4,1.2-1.8c-0.6-0.3-0.9-0.8-0.9-1.5c0-0.7,0.4-1.2,1.1-1.6c-0.3-0.3-0.6-0.6-0.7-0.9 c-0.2-0.4-0.2-0.8-0.2-1.3c0-1,0.3-1.8,0.9-2.3c0.6-0.5,1.6-0.8,2.8-0.8c0.5,0,1,0,1.4,0.1c0.4,0.1,0.8,0.2,1.1,0.4l2.4-0.2v1.5 h-1.5c0.2,0.4,0.2,0.8,0.2,1.3c0,1-0.3,1.7-0.9,2.2s-1.5,0.8-2.7,0.8c-0.7,0-1.2-0.1-1.6-0.2c-0.1,0.1-0.2,0.2-0.3,0.3 c-0.1,0.1-0.1,0.2-0.1,0.4c0,0.2,0.1,0.3,0.2,0.4c0.1,0.1,0.3,0.2,0.6,0.2l2.7,0.2c1,0.1,1.7,0.3,2.2,0.6c0.5,0.3,0.8,0.9,0.8,1.7 c0,0.6-0.2,1.1-0.5,1.5c-0.4,0.4-0.9,0.8-1.5,1c-0.7,0.2-1.5,0.4-2.4,0.4c-1.3,0-2.3-0.2-3-0.6C88.8,20.1,88.5,19.5,88.5,18.7z M95.1,18.4c0-0.3-0.1-0.5-0.3-0.7s-0.6-0.2-1.1-0.3l-2.7-0.3c-0.2,0.1-0.4,0.3-0.5,0.5c-0.1,0.2-0.2,0.4-0.2,0.6 c0,0.4,0.2,0.8,0.5,1c0.4,0.2,1,0.3,1.8,0.3C94.2,19.5,95.1,19.2,95.1,18.4z M94.3,11.5c0-0.6-0.1-1-0.4-1.2 c-0.3-0.2-0.7-0.3-1.3-0.3c-0.7,0-1.1,0.1-1.4,0.3c-0.3,0.2-0.4,0.6-0.4,1.2s0.1,1,0.4,1.2c0.3,0.2,0.7,0.3,1.4,0.3 c0.6,0,1.1-0.1,1.3-0.4S94.3,12,94.3,11.5z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M99.4,16V5l2-0.1v10.8c0,0.3,0.1,0.5,0.2,0.6c0.1,0.1,0.3,0.2,0.6,0.2c0.3,0,0.6,0,0.9-0.1V18 c-0.4,0.1-1,0.2-1.6,0.2c-0.8,0-1.3-0.2-1.7-0.5S99.4,16.8,99.4,16z" })
+                    )
+                  )
+                );
+              };
+
+            return function App() {
+              var rootElm = react.useRef(null);
+              var _useState = react.useState({
+                width: window.innerWidth,
+                height: window.innerHeight
+              });
+              var windowDimension = _useState[0];
+              var setDimension = _useState[1];
+              react.useEffect(function sideEffect(){
+                function handleResize() {
+                  setDimension({width: window.innerWidth, height: window.innerHeight});
+                };
+                window.addEventListener('resize', handleResize);
+                return function() {window.removeEventListener('resize', handleResize);};
+              }, []);
+              return react.createElement(
+                'div',
+                {style: {position: 'absolute', left: 0, width: '100vw', height: '100vh'}},
+                
+                react.createElement(keplerGl.KeplerGl, {
+                  mapboxApiAccessToken: mapboxToken,
+                  id: "map",
+                  width: windowDimension.width,
+                  height: windowDimension.height
+                })
+              )
+            }
+          }(React, KeplerGl, MAPBOX_TOKEN));
+
+          const app = (function createReactReduxProvider(react, reactRedux, KeplerElement) {
+            return react.createElement(
+              reactRedux.Provider,
+              {store},
+              react.createElement(KeplerElement, null)
+            )
+          }(React, ReactRedux, KeplerElement));
+          /** END COMPONENTS **/
+
+          /** Render **/
+          (function render(react, reactDOM, app) {
+            const container = document.getElementById('app');
+            const root = reactDOM.createRoot(container);
+            root.render(app);
+          }(React, ReactDOM, app));
+        </script>
+        <!-- The next script will show how to interact directly with Kepler map store -->
+        <script>
+          /**
+           * Customize map.
+           * In the following section you can use the store object to dispatch Kepler.gl actions
+           * to add new data and customize behavior
+           */
+          (function customize(keplerGl, store) {
+            const datasets = [{"version":"v1","data":{"id":"en4ucb","label":"BSC_OD - Sheet1 (1).csv","color":[0,92,255],"allData":[["Blue","S6",-80.03501892089844,32.86654281616211,"S6",-80.03501892089844,32.86654281616211,false,448,"85,838",7.230000019073486,1384.47998046875],["Blue","S6",-80.03501892089844,32.86654281616211,"HUB",-80.03286743164062,32.87810134887695,false,302,"54,703",4.869999885559082,882.3099975585938],["Blue","HUB",-80.03286743164062,32.87810134887695,"S6",-80.03501892089844,32.86654281616211,false,188,"34,843",3.130000114440918,580.719970703125],["Blue","HUB",-80.03286743164062,32.87810134887695,"HUB",-80.03286743164062,32.87810134887695,false,167,"29,576",2.880000114440918,509.92999267578125],["Blue","S6",-80.03501892089844,32.86654281616211,"S6",-80.03501892089844,32.86654281616211,true,156,"4,950",6.239999771118164,198],["Blue","S6",-80.03501892089844,32.86654281616211,"HUB",-80.03286743164062,32.87810134887695,true,141,"4,275",5.880000114440918,178.1300048828125],["Blue","HUB",-80.03286743164062,32.87810134887695,"HUB",-80.03286743164062,32.87810134887695,true,56,"1,420",2.3299999237060547,59.16999816894531],["Blue","HUB",-80.03286743164062,32.87810134887695,"S6",-80.03501892089844,32.86654281616211,true,50,"1,611",2.1700000762939453,70.04000091552734],["Coliseum","Coliseum",-80.01844024658203,32.86612319946289,"Coliseum",-80.01844024658203,32.86612319946289,false,313,"18,489",5.590000152587891,330.1600036621094],["Coliseum","Coliseum",-80.01844024658203,32.86612319946289,"88-30 W",-80.03260040283203,32.877052307128906,false,101,"6,230",1.909999966621399,117.55000305175781],["Coliseum","88-30 W",-80.03260040283203,32.877052307128906,"Coliseum",-80.01844024658203,32.86612319946289,false,25,"1,268",1.25,63.400001525878906],["Coliseum","88-30 W",-80.03260040283203,32.877052307128906,"88-30 W",-80.03260040283203,32.877052307128906,false,9,"386",1,42.88999938964844],["Green","S5",-80.03733825683594,32.867225646972656,"S5",-80.03733825683594,32.867225646972656,false,582,"74,745",9.390000343322754,1205.56005859375],["Green","S5",-80.03733825683594,32.867225646972656,"88-30 W",-80.03260040283203,32.877052307128906,false,408,"58,455",6.579999923706055,942.8200073242188],["Green","88-30 W",-80.03260040283203,32.877052307128906,"S5",-80.03733825683594,32.867225646972656,false,138,"24,371",2.299999952316284,406.17999267578125],["Green","88-30 W",-80.03260040283203,32.877052307128906,"88-30 W",-80.03260040283203,32.877052307128906,false,91,"15,664",1.649999976158142,284.79998779296875],["Green","S5",-80.03733825683594,32.867225646972656,"88-30 SE",-80.0302505493164,32.87615966796875,false,24,"2,953",1.2000000476837158,147.64999389648438],["Green","S5",-80.03733825683594,32.867225646972656,"88-30",-80.02948760986328,32.87748718261719,false,18,"2,157",1.1299999952316284,134.80999755859375],["Green","88-30",-80.02948760986328,32.87748718261719,"S5",-80.03733825683594,32.867225646972656,false,6,"599",1,99.83000183105469],["Green","88-30 SE",-80.0302505493164,32.87615966796875,"S5",-80.03733825683594,32.867225646972656,false,5,"514",1,102.80000305175781],["Green","88-30",-80.02948760986328,32.87748718261719,"88-30 W",-80.03260040283203,32.877052307128906,false,2,"155",1,77.5],["Green","88-30",-80.02948760986328,32.87748718261719,"88-30 SE",-80.0302505493164,32.87615966796875,false,2,"193",1,96.5],["Green","88-30 SE",-80.0302505493164,32.87615966796875,"88-30 W",-80.03260040283203,32.877052307128906,false,1,"20",1,20],["Green","S5",-80.03733825683594,32.867225646972656,"S5",-80.03733825683594,32.867225646972656,true,174,"6,963",7.25,290.1300048828125],["Green","S5",-80.03733825683594,32.867225646972656,"88-30 W",-80.03260040283203,32.877052307128906,true,139,"4,622",5.789999961853027,192.5800018310547],["Green","88-30 W",-80.03260040283203,32.877052307128906,"S5",-80.03733825683594,32.867225646972656,true,47,"1,293",2.3499999046325684,64.6500015258789],["Green","88-30 W",-80.03260040283203,32.877052307128906,"88-30 W",-80.03260040283203,32.877052307128906,true,33,"1,106",1.4299999475479126,48.09000015258789],["Orange","S7",-80.03241729736328,32.86476516723633,"S7",-80.03241729736328,32.86476516723633,false,377,"16,962",6.079999923706055,273.5799865722656],["Orange","S7",-80.03241729736328,32.86476516723633,"88-20 W",-80.03333282470703,32.880348205566406,false,304,"14,682",4.900000095367432,236.80999755859375],["Orange","88-20 W",-80.03333282470703,32.880348205566406,"S7",-80.03241729736328,32.86476516723633,false,137,"5,855",2.450000047683716,104.55000305175781],["Orange","88-20 W",-80.03333282470703,32.880348205566406,"88-20 W",-80.03333282470703,32.880348205566406,false,105,"4,885",1.909999966621399,88.81999969482422],["Orange","S7",-80.03241729736328,32.86476516723633,"S7",-80.03241729736328,32.86476516723633,true,92,"1,028",4,44.70000076293945],["Orange","S7",-80.03241729736328,32.86476516723633,"88-20 W",-80.03333282470703,32.880348205566406,true,89,"867",4.050000190734863,39.40999984741211],["Orange","88-20 W",-80.03333282470703,32.880348205566406,"S7",-80.03241729736328,32.86476516723633,true,35,"311",2.059999942779541,18.290000915527344],["Orange","88-20 W",-80.03333282470703,32.880348205566406,"88-20 W",-80.03333282470703,32.880348205566406,true,34,"398",2.130000114440918,24.8799991607666],["Pink","HUB",-80.03286743164062,32.87810134887695,"Welcome Center",-80.03571319580078,32.87287139892578,false,38,"4,261",1.149999976158142,129.1199951171875],["Pink","Welcome Center",-80.03571319580078,32.87287139892578,"Welcome Center",-80.03571319580078,32.87287139892578,false,33,"3,600",1.100000023841858,120],["Pink","HUB",-80.03286743164062,32.87810134887695,"HUB",-80.03286743164062,32.87810134887695,false,29,"2,898",1.0700000524520874,107.33000183105469],["Pink","Welcome Center",-80.03571319580078,32.87287139892578,"HUB",-80.03286743164062,32.87810134887695,false,15,"1,622",1.0700000524520874,115.86000061035156],["Pink","Welcome Center",-80.03571319580078,32.87287139892578,"Welcome Center",-80.03571319580078,32.87287139892578,true,16,"196",1.1399999856948853,14],["Pink","Welcome Center",-80.03571319580078,32.87287139892578,"HUB",-80.03286743164062,32.87810134887695,true,12,"183",1.090000033378601,16.639999389648438],["Pink","HUB",-80.03286743164062,32.87810134887695,"HUB",-80.03286743164062,32.87810134887695,true,11,"237",1,21.549999237060547],["Pink","HUB",-80.03286743164062,32.87810134887695,"Welcome Center",-80.03571319580078,32.87287139892578,true,8,"181",1,22.6299991607666],["Purple","S7",-80.03241729736328,32.86476516723633,"S7",-80.03241729736328,32.86476516723633,false,615,"70,818",9.920000076293945,1142.22998046875],["Purple","S7",-80.03241729736328,32.86476516723633,"88-19 Aftbody",-80.03612518310547,32.87561798095703,false,272,"35,321",5.039999961853027,654.0900268554688],["Purple","88-19 Aftbody",-80.03612518310547,32.87561798095703,"S7",-80.03241729736328,32.86476516723633,false,114,"12,801",2.2799999713897705,256.0199890136719],["Purple","88-19 Aftbody",-80.03612518310547,32.87561798095703,"88-19 Aftbody",-80.03612518310547,32.87561798095703,false,73,"7,754",1.7400000095367432,184.6199951171875],["Purple","S7",-80.03241729736328,32.86476516723633,"S7",-80.03241729736328,32.86476516723633,true,170,"4,491",6.800000190734863,179.63999938964844],["Purple","S7",-80.03241729736328,32.86476516723633,"88-19 Aftbody",-80.03612518310547,32.87561798095703,true,118,"2,182",5.360000133514404,99.18000030517578],["Purple","88-19 Aftbody",-80.03612518310547,32.87561798095703,"S7",-80.03241729736328,32.86476516723633,true,40,"695",2.222222328186035,38.61111068725586],["Purple","88-19 Aftbody",-80.03612518310547,32.87561798095703,"88-19 Aftbody",-80.03612518310547,32.87561798095703,true,24,"663",2,55.25],["Red","E5",-80.02803039550781,32.871612548828125,"Welcome Center",-80.03571319580078,32.87287139892578,false,95,"4,757",1.8627450466156006,93.2745132446289],["Red","E5",-80.02803039550781,32.871612548828125,"E5",-80.02803039550781,32.871612548828125,false,78,"3,414",1.6595745086669922,72.63829803466797],["Red","E5",-80.02803039550781,32.871612548828125,"E4",-80.02813720703125,32.87351608276367,false,43,"2,046",1.2647058963775635,60.17647171020508],["Red","Welcome Center",-80.03571319580078,32.87287139892578,"Welcome Center",-80.03571319580078,32.87287139892578,false,32,"1,698",1.1428571939468384,60.64285659790039],["Red","Welcome Center",-80.03571319580078,32.87287139892578,"E5",-80.02803039550781,32.871612548828125,false,29,"1,153",1.2083333730697632,48.04166793823242],["Red","E4",-80.02813720703125,32.87351608276367,"E5",-80.02803039550781,32.871612548828125,false,27,"1,006",1.125,41.91666793823242],["Red","Welcome Center",-80.03571319580078,32.87287139892578,"E4",-80.02813720703125,32.87351608276367,false,21,"1,117",1.0499999523162842,55.849998474121094],["Red","E4",-80.02813720703125,32.87351608276367,"Welcome Center",-80.03571319580078,32.87287139892578,false,15,"632",1.3636363744735718,57.45454406738281],["Red","E4",-80.02813720703125,32.87351608276367,"E4",-80.02813720703125,32.87351608276367,false,13,"703",1.0833333730697632,58.58333206176758],["Red","E5",-80.02803039550781,32.871612548828125,"Welcome Center",-80.03571319580078,32.87287139892578,true,36,"867",1.56521737575531,37.69565200805664],["Red","E5",-80.02803039550781,32.871612548828125,"E5",-80.02803039550781,32.871612548828125,true,34,"616",1.8888888359069824,34.22222137451172],["Red","E5",-80.02803039550781,32.871612548828125,"E4",-80.02813720703125,32.87351608276367,true,15,"292",1.1538461446762085,22.461538314819336],["Red","Welcome Center",-80.03571319580078,32.87287139892578,"E5",-80.02803039550781,32.871612548828125,true,13,"312",1.2999999523162842,31.200000762939453],["Red","E4",-80.02813720703125,32.87351608276367,"E5",-80.02803039550781,32.871612548828125,true,11,"204",1.2222222089767456,22.66666603088379],["Red","Welcome Center",-80.03571319580078,32.87287139892578,"Welcome Center",-80.03571319580078,32.87287139892578,true,8,"284",1.1428571939468384,40.57143020629883],["Red","Welcome Center",-80.03571319580078,32.87287139892578,"E4",-80.02813720703125,32.87351608276367,true,6,"68",1.2000000476837158,13.600000381469727],["Red","E4",-80.02813720703125,32.87351608276367,"E4",-80.02813720703125,32.87351608276367,true,5,"218",1.25,54.5],["Red","E4",-80.02813720703125,32.87351608276367,"Welcome Center",-80.03571319580078,32.87287139892578,true,3,"66",1.5,33],["Yellow","E5",-80.02803039550781,32.871612548828125,"E5",-80.02803039550781,32.871612548828125,false,99,"8,917",1.8679245710372925,168.2452850341797],["Yellow","Delivery Center",-80.02755737304688,32.87833023071289,"E5",-80.02803039550781,32.871612548828125,false,84,"8,784",1.5849056243896484,165.73585510253906],["Yellow","E4",-80.02813720703125,32.87351608276367,"E5",-80.02803039550781,32.871612548828125,false,55,"6,261",1.25,142.2954559326172],["Yellow","E5",-80.02803039550781,32.871612548828125,"Delivery Center",-80.02755737304688,32.87833023071289,false,30,"2,919",1.2000000476837158,116.76000213623047],["Yellow","Delivery Center",-80.02755737304688,32.87833023071289,"Delivery Center",-80.02755737304688,32.87833023071289,false,23,"2,620",1.2777777910232544,145.55555725097656],["Yellow","E5",-80.02803039550781,32.871612548828125,"E4",-80.02813720703125,32.87351608276367,false,22,"2,477",1.1578947305679321,130.36842346191406],["Yellow","Delivery Center",-80.02755737304688,32.87833023071289,"E4",-80.02813720703125,32.87351608276367,false,19,"1,981",1.0555555820465088,110.05555725097656],["Yellow","E4",-80.02813720703125,32.87351608276367,"E4",-80.02813720703125,32.87351608276367,false,14,"1,282",1.1666666269302368,106.83333587646484],["Yellow","E4",-80.02813720703125,32.87351608276367,"Delivery Center",-80.02755737304688,32.87833023071289,false,13,"1,132",1.0833333730697632,94.33333587646484],["Yellow","E5",-80.02803039550781,32.871612548828125,"E5",-80.02803039550781,32.871612548828125,true,57,"1,387",2.192307710647583,53.346153259277344],["Yellow","E4",-80.02813720703125,32.87351608276367,"E5",-80.02803039550781,32.871612548828125,true,16,"600",1.3333333730697632,50],["Yellow","Delivery Center",-80.02755737304688,32.87833023071289,"E5",-80.02803039550781,32.871612548828125,true,14,"501",1.2727272510528564,45.54545593261719],["Yellow","E5",-80.02803039550781,32.871612548828125,"Delivery Center",-80.02755737304688,32.87833023071289,true,11,"333",1.100000023841858,33.29999923706055],["Yellow","Delivery Center",-80.02755737304688,32.87833023071289,"E4",-80.02813720703125,32.87351608276367,true,9,"396",1,44],["Yellow","Delivery Center",-80.02755737304688,32.87833023071289,"Delivery Center",-80.02755737304688,32.87833023071289,true,8,"180",1.1428571939468384,25.714284896850586],["Yellow","E5",-80.02803039550781,32.871612548828125,"E4",-80.02813720703125,32.87351608276367,true,7,"228",1,32.57143020629883],["Yellow","E4",-80.02813720703125,32.87351608276367,"Delivery Center",-80.02755737304688,32.87833023071289,true,3,"87",1.5,43.5],["Yellow","E4",-80.02813720703125,32.87351608276367,"E4",-80.02813720703125,32.87351608276367,true,2,"57",1,28.5]],"fields":[{"name":"Route","type":"string","format":"","analyzerType":"STRING"},{"name":"origin_stop","type":"string","format":"","analyzerType":"STRING"},{"name":"O_X","type":"real","format":"","analyzerType":"FLOAT"},{"name":"O_Y","type":"real","format":"","analyzerType":"FLOAT"},{"name":"destination_stop","type":"string","format":"","analyzerType":"STRING"},{"name":"D_X","type":"real","format":"","analyzerType":"FLOAT"},{"name":"D_Y","type":"real","format":"","analyzerType":"FLOAT"},{"name":"is_weekend","type":"boolean","format":"","analyzerType":"BOOLEAN"},{"name":"trip_count","type":"integer","format":"","analyzerType":"INT"},{"name":"total_riders","type":"integer","format":"","analyzerType":"INT"},{"name":"average_daily_trips","type":"real","format":"","analyzerType":"FLOAT"},{"name":"average_daily_riders","type":"real","format":"","analyzerType":"FLOAT"}],"type":"","metadata":{"id":"en4ucb","format":"row","label":"BSC_OD - Sheet1 (1).csv"},"disableDataOperation":false}}];
+            const config = {"version":"v1","config":{"visState":{"filters":[{"dataId":["en4ucb"],"id":"7nhfy3gr","name":["Route"],"type":"multiSelect","value":[],"plotType":{"type":"histogram"},"animationWindow":"free","yAxis":null,"view":"side","speed":1,"enabled":true}],"layers":[{"id":"ss17kg8","type":"cluster","config":{"dataId":"en4ucb","label":"Origin Stops","color":[246,209,138],"highlightColor":[252,242,26,255],"columns":{"lat":"O_Y","lng":"O_X"},"isVisible":true,"visConfig":{"opacity":0.8,"clusterRadius":10,"colorRange":{"colors":["#ADB0B0","#ABCFE6","#3787C0","#08306B"],"name":"color.customPalette","type":"custom","category":"Custom"},"radiusRange":[1,20],"colorAggregation":"average"},"hidden":false,"textLabel":[{"field":null,"color":[255,255,255],"size":18,"offset":[0,0],"anchor":"start","alignment":"center","outlineWidth":0,"outlineColor":[255,0,0,255],"background":false,"backgroundColor":[0,0,200,255]}]},"visualChannels":{"colorField":{"name":"trip_count","type":"integer"},"colorScale":"quantile"}},{"id":"rqu5pa","type":"cluster","config":{"dataId":"en4ucb","label":"Destination Stop","color":[255,203,153],"highlightColor":[252,242,26,255],"columns":{"lat":"D_Y","lng":"D_X"},"isVisible":true,"visConfig":{"opacity":0.8,"clusterRadius":10,"colorRange":{"colors":["#ADB0B0","#ABCFE6","#3787C0","#08306B"],"name":"color.customPalette","type":"custom","category":"Custom"},"radiusRange":[1,20],"colorAggregation":"average"},"hidden":false,"textLabel":[{"field":null,"color":[255,255,255],"size":18,"offset":[0,0],"anchor":"start","alignment":"center","outlineWidth":0,"outlineColor":[255,0,0,255],"background":false,"backgroundColor":[0,0,200,255]}]},"visualChannels":{"colorField":{"name":"trip_count","type":"integer"},"colorScale":"quantile"}},{"id":"pegzt7","type":"arc","config":{"dataId":"en4ucb","columnMode":"points","label":"OD RIdership","color":[77,193,156],"highlightColor":[252,242,26,255],"columns":{"lat0":"O_Y","lng0":"O_X","lat1":"D_Y","lng1":"D_X"},"isVisible":true,"visConfig":{"opacity":0.8,"thickness":2,"colorRange":{"colors":["#0198BD","#42C1BC","#9CE3B1","#F5B272","#EB7053","#D50255"],"name":"Ice And Fire","type":"diverging","category":"Uber"},"sizeRange":[0,17.3],"targetColor":null},"hidden":false,"textLabel":[{"field":null,"color":[255,255,255],"size":18,"offset":[0,0],"anchor":"start","alignment":"center","outlineWidth":0,"outlineColor":[255,0,0,255],"background":false,"backgroundColor":[0,0,200,255]}]},"visualChannels":{"colorField":{"name":"average_daily_riders","type":"real"},"colorScale":"quantile","sizeField":{"name":"trip_count","type":"integer"},"sizeScale":"linear"}}],"effects":[],"interactionConfig":{"tooltip":{"fieldsToShow":{"en4ucb":[{"name":"is_weekend","id":"is_weekend","displayName":"is_weekend","format":"","fieldIdx":7,"type":"boolean","analyzerType":"BOOLEAN","duckDBColumnType":"BOOLEAN"},{"name":"Route","id":"Route","displayName":"Route","format":"","fieldIdx":0,"type":"string","analyzerType":"STRING","duckDBColumnType":"VARCHAR"},{"name":"origin_stop","id":"origin_stop","displayName":"origin_stop","format":"","fieldIdx":1,"type":"string","analyzerType":"STRING","duckDBColumnType":"VARCHAR"},{"name":"O_X","id":"O_X","displayName":"O_X","format":"","fieldIdx":2,"type":"real","analyzerType":"FLOAT","duckDBColumnType":"FLOAT"},{"name":"O_Y","id":"O_Y","displayName":"O_Y","format":"","fieldIdx":3,"type":"real","analyzerType":"FLOAT","duckDBColumnType":"FLOAT","filterProps":{"domain":[32.864760000000004,32.88035000000001],"step":0.00001,"fieldType":"real","view":"side","value":[32.864760000000004,32.88035000000001],"type":"range","typeOptions":["range"],"gpu":true}},{"name":"destination_stop","id":"destination_stop","displayName":"destination_stop","format":"","fieldIdx":4,"type":"string","analyzerType":"STRING","duckDBColumnType":"VARCHAR"},{"name":"total_riders","format":null},{"name":"trip_count","format":null},{"name":"average_daily_riders","format":null},{"name":"average_daily_trips","format":null}]},"compareMode":false,"compareType":"absolute","enabled":true},"brush":{"size":0.5,"enabled":false},"geocoder":{"enabled":false},"coordinate":{"enabled":true}},"layerBlending":"normal","overlayBlending":"normal","splitMaps":[],"animationConfig":{"currentTime":null,"speed":1},"editor":{"features":[],"visible":true}},"mapState":{"bearing":24,"dragRotate":true,"latitude":32.878268431011634,"longitude":-80.03798181225653,"pitch":50,"zoom":14.053191716003987,"isSplit":false,"isViewportSynced":true,"isZoomLocked":false,"splitMapViewports":[]},"mapStyle":{"styleType":"positron","topLayerGroups":{},"visibleLayerGroups":{"label":true,"road":true,"border":false,"building":true,"water":true,"land":true,"3d building":false},"threeDBuildingColor":[232.7874787737094,232.7874787737094,230.92517894351974],"backgroundColor":[0,0,0],"mapStyles":{}},"uiState":{"mapControls":{"mapLegend":{"active":true,"settings":{"position":{"x":349.4250183105469,"anchorX":"left","y":30,"anchorY":"bottom"},"contentHeight":715.4000244140625}}}}}};
+
+            const loadedData = keplerGl.KeplerGlSchema.load(
+              datasets,
+              config
+            );
+
+            // For some reason Kepler overwrites the config without extra wait time
+            window.setTimeout(() => {
+              store.dispatch(
+                keplerGl.addDataToMap({
+                  datasets: loadedData.datasets,
+                  config: loadedData.config,
+                  options: {
+                    centerMap: false,
+                  },
+                })
+              );
+            }, 500);
+          }(KeplerGl, store))
+        </script>
+      </body>
+    </html>
+  
